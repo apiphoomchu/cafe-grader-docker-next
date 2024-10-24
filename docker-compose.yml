@@ -1,0 +1,83 @@
+version: "3"
+services:
+  grader:
+    build: 
+      context: ./grader
+      args:
+        MYSQL_ROOT_PASSWORD: p@ssw0rdsupersecret 
+        MYSQL_USER: root
+        MYSQL_PASSWORD: p@ssw0rdsupersecret
+        MYSQL_DATABASE: db
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    links:
+      - db
+    ports:
+      - 8080:8080
+    environment:
+      MYSQL_ROOT_PASSWORD: p@ssw0rdsupersecret 
+      MYSQL_USER: root
+      MYSQL_PASSWORD: p@ssw0rdsupersecret
+      MYSQL_DATABASE: db
+    volumes:
+      - main_log:/cafe_grader/log
+      - main_judge:/cafe_grader/judge
+      - ./ev:/cafe_grader/judge/ev
+      - ./data:/cafe_grader/web/data
+  db:
+    image: mysql:5.7
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: p@ssw0rdsupersecret
+    volumes:
+      - persistent:/var/lib/mysql
+      - ./mycustom.cnf:/etc/mysql/conf.d/custom.cnf:ro
+  nginx:
+    build: ./nginx
+    links:
+      - grader
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - main_log:/cafe_grader/log
+      - main_judge:/cafe_grader/judge
+      - ./cert:/cert:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  judge:
+    build: 
+      context: ./grader
+      args:
+        MYSQL_ROOT_PASSWORD: p@ssw0rdsupersecret 
+        MYSQL_USER: root
+        MYSQL_PASSWORD: p@ssw0rdsupersecret
+        MYSQL_DATABASE: db
+    command: /bin/bash /cafe_grader/wait-for-mysql-judge.sh
+    restart: always
+    links:
+      - grader
+      - db
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    environment:
+      MYSQL_ROOT_PASSWORD: p@ssw0rdsupersecret 
+      MYSQL_USER: root
+      MYSQL_PASSWORD: p@ssw0rdsupersecret
+      MYSQL_DATABASE: db
+    volumes:
+      - main_log:/cafe_grader/log
+      - main_judge:/cafe_grader/judge
+      - ./ev:/cafe_grader/judge/ev
+      - ./data:/cafe_grader/web/data
+
+volumes:
+  main_log:
+  main_judge:
+  persistent:
