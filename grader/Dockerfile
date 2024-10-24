@@ -61,8 +61,14 @@ RUN mkdir ev
 RUN mkdir result
 RUN mkdir log
 
+RUN sed -i 's/File.exists?/File.exist?/g' /cafe_grader/judge/scripts/grader
+
 RUN cp scripts/config/env_exam.rb.SAMPLE scripts/config/env_exam.rb
 RUN cp scripts/config/env_grading.rb.SAMPLE scripts/config/env_grading.rb
+
+# Make sure scripts are executable
+RUN chmod +x /cafe_grader/judge/scripts/grader
+RUN chmod -R 755 /cafe_grader/judge/scripts
 
 RUN echo "RAILS_ROOT = '/cafe_grader/web'" > scripts/config/environment.rb
 RUN echo "GRADER_ROOT = '/cafe_grader/judge/scripts'" >> scripts/config/environment.rb

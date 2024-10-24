@@ -28,13 +28,13 @@ export PATH="/usr/local/rvm/gems/ruby-3.2.1/bin:/usr/local/rvm/gems/ruby-3.2.1@g
 export GEM_HOME="/usr/local/rvm/gems/ruby-3.2.1"
 export GEM_PATH="/usr/local/rvm/gems/ruby-3.2.1:/usr/local/rvm/gems/ruby-3.2.1@global"
 
+# Ensure directories exist and have proper permissions
+mkdir -p /cafe_grader/judge/log
+chmod -R 777 /cafe_grader/judge/log
+chmod -R 755 /cafe_grader/judge/scripts
+
 # Change to the scripts directory
 cd /cafe_grader/judge/scripts
 
 # Run the grader daemon with proper Ruby environment
-/usr/local/rvm/bin/rvm-shell 3.2.1 -c "./grader grading queue --err-log"
-
-# For non-SSL purpose
-#rails s -p 3000 -b '0.0.0.0'
-# with-ssl-cert (Sirawit, 8/4/2019)
-# thin -p 3000 --ssl --ssl-key-file /cafe_grader/server.key --ssl-cert-file /cafe_grader/server.crt start 2>&1
+bundle exec ./grader grading queue --err-log
