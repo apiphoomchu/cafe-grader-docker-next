@@ -6,49 +6,26 @@ ARG MYSQL_USER
 ENV MYSQL_USER $MYSQL_USER
 ARG MYSQL_PASSWORD
 ENV MYSQL_PASSWORD $MYSQL_PASSWORD
-
-# Set Rails environment variables
-ENV RAILS_ENV=production
-ENV RAILS_SERVE_STATIC_FILES=true
-ENV NODE_ENV=production
-ENV DISABLE_ASSET_COMPILATION=true
-
-# Install required packages
 RUN apt-get update && \
-    apt-get install -y \
-    mysql-client \
-    g++ gcc apache2 \
-    git-core openssl \
-    zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev \
-    sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev \
-    ncurses-dev automake libtool bison subversion \
-    pkg-config unzip python3-setuptools python3-dev python3-numpy \
-    build-essential libpq-dev curl tzdata \
-    libreadline-dev \
-    libgdbm-dev \
-    libncurses5-dev \
-    default-libmysqlclient-dev \
-    nodejs \
-    npm && \
-    rm -rf /var/lib/apt/lists/*
-
-# Set timezone
-ENV TZ=Asia/Bangkok
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# Install RVM and Ruby
+	apt-get install mysql-client -y \
+	g++ gcc apache2 libmysqlclient20 \
+	git-core openssl libreadline6 libreadline6-dev \
+	zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev \
+	sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev \
+	ncurses-dev automake libtool bison subversion \
+	pkg-config unzip pyflakes ruby ruby-dev default-jdk \
+	libmysqld-dev mercurial python-setuptools python-dev python3-numpy \
+	build-essential libpq-dev nodejs curl tzdata && rm -rf /var/lib/apt/lists/*
 WORKDIR /
 RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import -
 RUN curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
 ENV RUBY_VERSION=3.2.1
+ENV TZ=Asia/Bangkok
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN curl -k -L https://get.rvm.io | bash -s stable
-RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
-    rvm requirements && \
-    rvm install $RUBY_VERSION && \
-    rvm use $RUBY_VERSION --default && \
-    gem update --system && \
-    gem install bundler"
-
+RUN /bin/bash /etc/profile.d/rvm.sh
+RUN /bin/bash -l -c "rvm install $RUBY_VERSION"
+RUN /bin/bash -l -c "rvm use $RUBY_VERSION"
 RUN mkdir cafe_grader
 
 # Judge
@@ -70,7 +47,6 @@ RUN echo "require File.join(File.dirname(__FILE__),'../lib/boot')" >> scripts/co
 RUN echo "require File.dirname(__FILE__) + \"/env_#{GRADER_ENV}.rb\"" >> scripts/config/environment.rb
 
 RUN gcc -std=c99 -o scripts/std-script/box scripts/std-script/box64-new.c
-
 
 # Web
 WORKDIR /cafe_grader
