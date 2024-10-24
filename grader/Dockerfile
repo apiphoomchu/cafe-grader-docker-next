@@ -28,7 +28,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     curl -sSL https://get.rvm.io | bash -s stable && \
 	source ~/.rvm/scripts/rvm \
-    /bin/bash -l -c "rvm install $RUBY_VERSION && rvm use $RUBY_VERSION --default" && \
+    rvm install 3.1.4 \
 	rvm use 3.1.4 --default \
     ruby -v
 RUN mkdir cafe_grader
