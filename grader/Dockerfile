@@ -138,5 +138,27 @@ RUN chmod +x /cafe_grader/judge/setup.sh \
 RUN echo 'source /etc/profile.d/rvm.sh' >> /etc/bash.bashrc && \
     echo 'rvm use 3.2.1 --default' >> /etc/bash.bashrc
 
+# Fix all instances of File.exists? in the codebase
+RUN find /cafe_grader -type f -name "*.rb" -exec sed -i 's/File\.exists?/File.exist?/g' {} + && \
+    find /cafe_grader -type f -name "grader" -exec sed -i 's/File\.exists?/File.exist?/g' {} +
+
+# Install gems for both web and judge components
+RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
+    cd /cafe_grader/web && bundle install && \
+    cd /cafe_grader/judge && \
+    if [ -f Gemfile ]; then bundle install; fi && \
+    cd /cafe_grader/judge/scripts && \
+    if [ -f Gemfile ]; then bundle install; fi"
+
+# Create bundle config to use local gems
+RUN mkdir -p /cafe_grader/judge/.bundle && \
+    echo "BUNDLE_PATH: '/usr/local/rvm/gems/ruby-3.2.1'" > /cafe_grader/judge/.bundle/config && \
+    mkdir -p /cafe_grader/judge/scripts/.bundle && \
+    echo "BUNDLE_PATH: '/usr/local/rvm/gems/ruby-3.2.1'" > /cafe_grader/judge/scripts/.bundle/config
+
+# Ensure proper permissions
+RUN chown -R root:root /usr/local/rvm/gems/ruby-3.2.1 && \
+    chmod -R 777 /usr/local/rvm/gems/ruby-3.2.1
+
 # Set the default command with proper Ruby environment
 CMD ["/bin/bash", "-l", "-c", "source /etc/profile.d/rvm.sh && /cafe_grader/wait-for-mysql.sh"]
