@@ -7,6 +7,11 @@ ENV MYSQL_USER $MYSQL_USER
 ARG MYSQL_PASSWORD
 ENV MYSQL_PASSWORD $MYSQL_PASSWORD
 
+# Set Rails environment variables
+ENV RAILS_ENV=production
+ENV RAILS_SERVE_STATIC_FILES=true
+ENV NODE_ENV=production
+
 # Install required packages
 RUN apt-get update && \
     apt-get install -y \
@@ -58,7 +63,6 @@ RUN mkdir log
 RUN cp scripts/config/env_exam.rb.SAMPLE scripts/config/env_exam.rb
 RUN cp scripts/config/env_grading.rb.SAMPLE scripts/config/env_grading.rb
 
-
 RUN echo "RAILS_ROOT = '/cafe_grader/web'" > scripts/config/environment.rb
 RUN echo "GRADER_ROOT = '/cafe_grader/judge/scripts'" >> scripts/config/environment.rb
 RUN echo "require File.join(File.dirname(__FILE__),'../lib/boot')" >> scripts/config/environment.rb
@@ -88,6 +92,13 @@ RUN /bin/bash -l -c "bundle install"
 
 # Install Node.js dependencies for Rails asset compilation
 RUN npm install -g yarn
+RUN yarn install
+
+# Create necessary directories for asset compilation
+RUN mkdir -p tmp/cache
+RUN mkdir -p public/assets
+RUN chmod -R 777 tmp
+RUN chmod -R 777 public
 
 # Database setup
 RUN echo "development:" > config/secrets.yml
@@ -120,11 +131,22 @@ RUN echo "  password: $MYSQL_PASSWORD" >> config/database.yml
 RUN echo "  host: db" >> config/database.yml
 RUN echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml
 
-# Precompile assets
-RUN /bin/bash -l -c "rake assets:precompile RAILS_ENV=production"
+# Fix SASS compilation issues
+RUN if [ -f app/assets/stylesheets/application.css.scss ]; then \
+    sed -i 's/background: rgb(var(--dt-row-selected));/background: #f0f0f0;/g' app/assets/stylesheets/application.css.scss; \
+    fi
+
+# Precompile assets with proper environment variables
+ENV SECRET_KEY_BASE=temporary_key_for_precompilation
+RUN /bin/bash -l -c "bundle exec rake assets:precompile RAILS_ENV=production"
 
 WORKDIR /cafe_grader/web
 ADD setup.sh /cafe_grader/judge/setup.sh
 ADD wait-for-mysql-judge.sh /cafe_grader/wait-for-mysql-judge.sh
 ADD wait-for-mysql.sh /cafe_grader/wait-for-mysql.sh
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/ || exit 1
+
 CMD /bin/bash /cafe_grader/wait-for-mysql.sh
