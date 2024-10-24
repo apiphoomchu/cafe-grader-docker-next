@@ -6,31 +6,39 @@ ARG MYSQL_USER
 ENV MYSQL_USER $MYSQL_USER
 ARG MYSQL_PASSWORD
 ENV MYSQL_PASSWORD $MYSQL_PASSWORD
-RUN apt-get update && \
-	apt-get install mysql-client -y \
-	g++ gcc apache2 libmysqlclient20 \
-	git-core openssl libreadline6 libreadline6-dev \
-	zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev \
-	sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev \
-	ncurses-dev automake libtool bison subversion \
-	pkg-config unzip pyflakes ruby ruby-dev default-jdk \
-	libmysqld-dev mercurial python-setuptools python-dev python3-numpy \
-	build-essential libpq-dev nodejs curl tzdata && rm -rf /var/lib/apt/lists/*
-WORKDIR /
-RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import -
-RUN curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
-ENV RUBY_VERSION=3.1.4
+
+# Set timezone
 ENV TZ=Asia/Bangkok
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Install dependencies
 RUN apt-get update && \
-    apt-get remove ruby -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    curl -sSL https://get.rvm.io | bash -s stable && \
-	source ~/.rvm/scripts/rvm \
-    rvm install 3.1.4 \
-	rvm use 3.1.4 --default \
-    ruby -v
+    apt-get install -y \
+    mysql-client \
+    g++ gcc apache2 libmysqlclient20 \
+    git-core openssl libreadline6 libreadline6-dev \
+    zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev \
+    sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev \
+    ncurses-dev automake libtool bison subversion \
+    pkg-config unzip pyflakes default-jdk \
+    libmysqld-dev mercurial python-setuptools python-dev python3-numpy \
+    build-essential libpq-dev nodejs curl tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /
+
+# Import RVM keys
+RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import - && \
+    curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
+
+# Install RVM and Ruby
+ENV RUBY_VERSION=3.1.4
+RUN curl -sSL https://get.rvm.io | bash -s stable && \
+    /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
+    rvm install ${RUBY_VERSION} && \
+    rvm use ${RUBY_VERSION} --default && \
+    ruby -v"
+
 RUN mkdir cafe_grader
 
 # Judge
