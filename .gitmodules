@@ -1,12 +1,12 @@
 [submodule "grader/web"]
 	path = grader/web
 	url = https://github.com/nattee/cafe-grader-web.git
-[submodule "grader/scripts"]
-	path = grader/scripts
-	url = https://github.com/apiphoomchu/cafe-grader-judge-scripts.git
 [submodule "judge/web"]
 	path = judge/web
 	url = https://github.com/nattee/cafe-grader-web.git
 [submodule "judge/scripts"]
 	path = judge/scripts
+	url = https://github.com/apiphoomchu/cafe-grader-judge-scripts.git
+[submodule "grader/scripts"]
+	path = grader/scripts
 	url = https://github.com/apiphoomchu/cafe-grader-judge-scripts.git
