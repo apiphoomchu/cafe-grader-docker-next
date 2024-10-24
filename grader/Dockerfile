@@ -53,84 +53,99 @@ RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import -
 RUN curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
 ENV RUBY_VERSION=3.2.1
 ENV TZ=Asia/Bangkok
+
+# Create a non-root user for running Bundler
+RUN useradd -m -s /bin/bash grader
+RUN mkdir -p /cafe_grader && chown -R grader:grader /cafe_grader
+
+# Switch to non-root user for RVM installation
+USER grader
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN curl -k -L https://get.rvm.io | bash -s stable
-RUN /bin/bash /etc/profile.d/rvm.sh
-RUN /bin/bash -l -c "rvm install $RUBY_VERSION"
-RUN /bin/bash -l -c "rvm use $RUBY_VERSION"
-RUN mkdir cafe_grader
+RUN /bin/bash -l -c "source $HOME/.rvm/scripts/rvm && \
+    rvm install $RUBY_VERSION && \
+    rvm use $RUBY_VERSION --default"
 
-# Judge
-RUN mkdir /cafe_grader/judge
+# Install correct Bundler version
+RUN /bin/bash -l -c "gem install bundler:2.3.22"
+
+USER root
+RUN mkdir -p /cafe_grader/judge
 WORKDIR /cafe_grader/judge
 ADD scripts /cafe_grader/judge/scripts
-RUN mkdir raw
-RUN mkdir ev-exam
-RUN mkdir ev
-RUN mkdir result
-RUN mkdir log
+RUN mkdir raw ev-exam ev result log && \
+    chown -R grader:grader /cafe_grader
 
-RUN cp scripts/config/env_exam.rb.SAMPLE scripts/config/env_exam.rb
-RUN cp scripts/config/env_grading.rb.SAMPLE scripts/config/env_grading.rb
+# Configuration files
+RUN cp scripts/config/env_exam.rb.SAMPLE scripts/config/env_exam.rb && \
+    cp scripts/config/env_grading.rb.SAMPLE scripts/config/env_grading.rb
 
-RUN echo "RAILS_ROOT = '/cafe_grader/web'" > scripts/config/environment.rb
-RUN echo "GRADER_ROOT = '/cafe_grader/judge/scripts'" >> scripts/config/environment.rb
-RUN echo "require File.join(File.dirname(__FILE__),'../lib/boot')" >> scripts/config/environment.rb
-RUN echo "require File.dirname(__FILE__) + \"/env_#{GRADER_ENV}.rb\"" >> scripts/config/environment.rb
+RUN echo "RAILS_ROOT = '/cafe_grader/web'" > scripts/config/environment.rb && \
+    echo "GRADER_ROOT = '/cafe_grader/judge/scripts'" >> scripts/config/environment.rb && \
+    echo "require File.join(File.dirname(__FILE__),'../lib/boot')" >> scripts/config/environment.rb && \
+    echo "require File.dirname(__FILE__) + \"/env_#{GRADER_ENV}.rb\"" >> scripts/config/environment.rb
 
 RUN gcc -std=c99 -o scripts/std-script/box scripts/std-script/box64-new.c
 
-# Web
+# Web setup
 WORKDIR /cafe_grader
 ADD web /cafe_grader/web
-RUN cp web/config/application.rb.SAMPLE web/config/application.rb
 COPY worker.yml /cafe_grader/web/config/worker.yml
-RUN cp web/config/initializers/cafe_grader_config.rb.SAMPLE web/config/initializers/cafe_grader_config.rb
-RUN export timezone=`cat /etc/timezone` && export replace="s!'UTC'!'$timezone'!g" && echo $replace && sed -i $replace web/config/application.rb
+RUN cp web/config/application.rb.SAMPLE web/config/application.rb && \
+    cp web/config/initializers/cafe_grader_config.rb.SAMPLE web/config/initializers/cafe_grader_config.rb
+
+RUN export timezone=`cat /etc/timezone` && \
+    sed -i "s!'UTC'!'$timezone'!g" web/config/application.rb
+
 WORKDIR /cafe_grader/web
 
-RUN echo "Object.instance_eval{remove_const :GRADER_ROOT_DIR}" >> config/initializers/cafe_grader_config.rb 
-RUN echo "Object.instance_eval{remove_const :GRADING_RESULT_DIR}" >> config/initializers/cafe_grader_config.rb
-RUN echo "GRADER_ROOT_DIR = '/cafe_grader/judge'" >> config/initializers/cafe_grader_config.rb
-RUN echo "GRADING_RESULT_DIR = '/cafe_grader/judge/result'" >> config/initializers/cafe_grader_config.rb
+# Update grader configuration
+RUN echo "Object.instance_eval{remove_const :GRADER_ROOT_DIR}" >> config/initializers/cafe_grader_config.rb && \
+    echo "Object.instance_eval{remove_const :GRADING_RESULT_DIR}" >> config/initializers/cafe_grader_config.rb && \
+    echo "GRADER_ROOT_DIR = '/cafe_grader/judge'" >> config/initializers/cafe_grader_config.rb && \
+    echo "GRADING_RESULT_DIR = '/cafe_grader/judge/result'" >> config/initializers/cafe_grader_config.rb
 
-RUN gem install bundler --version '< 2.0'
-RUN bundle install
+# Switch to non-root user for bundle install
+USER grader
+RUN /bin/bash -l -c "cd /cafe_grader/web && bundle install"
 
 # Database setup
-RUN echo "development:" > config/secrets.yml
-RUN export SECRET_A=`rake secret`;echo "  secret_key_base: '$SECRET_A'" >> config/secrets.yml
-RUN echo "test:" >> config/secrets.yml
-RUN export SECRET_B=`rake secret`;echo "  secret_key_base: '$SECRET_B'" >> config/secrets.yml
-RUN echo "production:" >> config/secrets.yml
-RUN export SECRET_C=`rake secret`;echo "  secret_key_base: '$SECRET_C'" >> config/secrets.yml
+RUN /bin/bash -l -c "cd /cafe_grader/web && \
+    echo 'development:' > config/secrets.yml && \
+    echo '  secret_key_base: '$(rake secret) >> config/secrets.yml && \
+    echo 'test:' >> config/secrets.yml && \
+    echo '  secret_key_base: '$(rake secret) >> config/secrets.yml && \
+    echo 'production:' >> config/secrets.yml && \
+    echo '  secret_key_base: '$(rake secret) >> config/secrets.yml"
 
-RUN echo "development:" > config/database.yml
-RUN echo "  adapter: mysql2" >> config/database.yml
-RUN echo "  encoding: utf8" >> config/database.yml
-RUN echo "  reconnect: false" >> config/database.yml
-RUN echo "  database: $MYSQL_DATABASE" >> config/database.yml
-RUN echo "  pool: 5" >> config/database.yml
-RUN echo "  username: $MYSQL_USER" >> config/database.yml
-RUN echo "  password: $MYSQL_PASSWORD" >> config/database.yml
-RUN echo "  host: db" >> config/database.yml
-RUN echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml
-RUN echo "" >> config/database.yml
-RUN echo "production:" >> config/database.yml
-RUN echo "  adapter: mysql2" >> config/database.yml
-RUN echo "  encoding: utf8" >> config/database.yml
-RUN echo "  reconnect: false" >> config/database.yml
-RUN echo "  database: $MYSQL_DATABASE" >> config/database.yml
-RUN echo "  pool: 5" >> config/database.yml
-RUN echo "  username: $MYSQL_USER" >> config/database.yml
-RUN echo "  password: $MYSQL_PASSWORD" >> config/database.yml
-RUN echo "  host: db" >> config/database.yml
-RUN echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml
+RUN echo "development:" > config/database.yml && \
+    echo "  adapter: mysql2" >> config/database.yml && \
+    echo "  encoding: utf8" >> config/database.yml && \
+    echo "  reconnect: false" >> config/database.yml && \
+    echo "  database: $MYSQL_DATABASE" >> config/database.yml && \
+    echo "  pool: 5" >> config/database.yml && \
+    echo "  username: $MYSQL_USER" >> config/database.yml && \
+    echo "  password: $MYSQL_PASSWORD" >> config/database.yml && \
+    echo "  host: db" >> config/database.yml && \
+    echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml && \
+    echo "" >> config/database.yml && \
+    echo "production:" >> config/database.yml && \
+    echo "  adapter: mysql2" >> config/database.yml && \
+    echo "  encoding: utf8" >> config/database.yml && \
+    echo "  reconnect: false" >> config/database.yml && \
+    echo "  database: $MYSQL_DATABASE" >> config/database.yml && \
+    echo "  pool: 5" >> config/database.yml && \
+    echo "  username: $MYSQL_USER" >> config/database.yml && \
+    echo "  password: $MYSQL_PASSWORD" >> config/database.yml && \
+    echo "  host: db" >> config/database.yml && \
+    echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml
 
-RUN rake assets:precompile
+RUN /bin/bash -l -c "cd /cafe_grader/web && rake assets:precompile"
 
 WORKDIR /cafe_grader/web
 ADD setup.sh /cafe_grader/judge/setup.sh
 ADD wait-for-mysql-judge.sh /cafe_grader/wait-for-mysql-judge.sh
 ADD wait-for-mysql.sh /cafe_grader/wait-for-mysql.sh
-CMD /bin/bash /cafe_grader/wait-for-mysql.sh
+
+USER root
+CMD ["/bin/bash", "/cafe_grader/wait-for-mysql.sh"]
