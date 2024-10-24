@@ -54,13 +54,15 @@ RUN curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
 ENV RUBY_VERSION=3.2.1
 ENV TZ=Asia/Bangkok
 
+# Set timezone as root
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Create a non-root user for running Bundler
 RUN useradd -m -s /bin/bash grader
 RUN mkdir -p /cafe_grader && chown -R grader:grader /cafe_grader
 
 # Switch to non-root user for RVM installation
 USER grader
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN curl -k -L https://get.rvm.io | bash -s stable
 RUN /bin/bash -l -c "source $HOME/.rvm/scripts/rvm && \
     rvm install $RUBY_VERSION && \
