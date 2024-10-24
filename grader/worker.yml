@@ -21,11 +21,11 @@ shared:
     python: <%= `which python3`.strip %>
     javac: <%= `which javac`.strip %>
     java: <%= `which java`.strip %>
-    digital: <%= Rails.root.join 'lib','language', 'digital','Digital.jar' %>
-    haskell: <%= `which ghc`.strip %>
-    rust: <%= `which rustc`.strip %>
-    go: <%= `which go`.strip %>
-    pas: <%= `which fpc`.strip %>
+    # digital: <%= Rails.root.join 'lib','language', 'digital','Digital.jar' %>
+    # haskell: <%= `which ghc`.strip %>
+    # rust: <%= `which rustc`.strip %>
+    # go: <%= `which go`.strip %>
+    # pas: <%= `which fpc`.strip %>
   isolate_path: <%= `which isolate`.strip %>
 
   #hosts
