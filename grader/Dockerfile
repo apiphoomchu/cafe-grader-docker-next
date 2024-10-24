@@ -45,12 +45,11 @@ RUN apt-get update && \
     libpq-dev \
     nodejs \
     curl \
+    gnupg2 \
     tzdata && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
-RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import -
-RUN curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
 ENV RUBY_VERSION=3.2.1
 ENV TZ=Asia/Bangkok
 
@@ -63,7 +62,15 @@ RUN mkdir -p /cafe_grader && chown -R grader:grader /cafe_grader
 
 # Switch to non-root user for RVM installation
 USER grader
-RUN curl -k -L https://get.rvm.io | bash -s stable
+WORKDIR /home/grader
+
+# Import GPG keys first
+RUN gpg2 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB || \
+    curl -sSL https://rvm.io/mpapis.asc | gpg2 --import - && \
+    curl -sSL https://rvm.io/pkuczynski.asc | gpg2 --import -
+
+# Install RVM and Ruby
+RUN curl -sSL https://get.rvm.io | bash -s stable
 RUN /bin/bash -l -c "source $HOME/.rvm/scripts/rvm && \
     rvm install $RUBY_VERSION && \
     rvm use $RUBY_VERSION --default"
