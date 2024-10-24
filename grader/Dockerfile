@@ -112,8 +112,8 @@ RUN echo "  username: $MYSQL_USER" >> config/database.yml
 RUN echo "  password: $MYSQL_PASSWORD" >> config/database.yml
 RUN echo "  host: db" >> config/database.yml
 RUN echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml
-RUN rake assets:precompile
-
+RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
+    rake assets:precompile"
 WORKDIR /cafe_grader/web
 ADD setup.sh /cafe_grader/judge/setup.sh
 ADD wait-for-mysql-judge.sh /cafe_grader/wait-for-mysql-judge.sh
