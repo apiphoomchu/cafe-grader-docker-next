@@ -58,6 +58,7 @@ RUN mkdir log
 RUN cp scripts/config/env_exam.rb.SAMPLE scripts/config/env_exam.rb
 RUN cp scripts/config/env_grading.rb.SAMPLE scripts/config/env_grading.rb
 
+
 RUN echo "RAILS_ROOT = '/cafe_grader/web'" > scripts/config/environment.rb
 RUN echo "GRADER_ROOT = '/cafe_grader/judge/scripts'" >> scripts/config/environment.rb
 RUN echo "require File.join(File.dirname(__FILE__),'../lib/boot')" >> scripts/config/environment.rb
@@ -69,6 +70,7 @@ RUN gcc -std=c99 -o scripts/std-script/box scripts/std-script/box64-new.c
 WORKDIR /cafe_grader
 ADD web /cafe_grader/web
 RUN cp web/config/application.rb.SAMPLE web/config/application.rb
+COPY worker.yml /cafe_grader/web/config/worker.yml
 RUN cp web/config/initializers/cafe_grader_config.rb.SAMPLE web/config/initializers/cafe_grader_config.rb
 RUN export timezone=`cat /etc/timezone` && export replace="s!'UTC'!'$timezone'!g" && sed -i $replace web/config/application.rb
 WORKDIR /cafe_grader/web
