@@ -61,16 +61,6 @@ RUN mkdir ev
 RUN mkdir result
 RUN mkdir log
 
-# Create Gemfile for judge
-RUN echo "source 'https://rubygems.org'" > /cafe_grader/judge/scripts/Gemfile
-RUN echo "gem 'mysql2'" >> /cafe_grader/judge/scripts/Gemfile
-RUN echo "gem 'rails', '~> 7.0'" >> /cafe_grader/judge/scripts/Gemfile
-RUN echo "gem 'rake'" >> /cafe_grader/judge/scripts/Gemfile
-
-# Install gems for judge
-WORKDIR /cafe_grader/judge/scripts
-RUN /bin/bash -l -c "bundle install"
-
 RUN sed -i 's/File.exists?/File.exist?/g' /cafe_grader/judge/scripts/grader
 
 RUN cp scripts/config/env_exam.rb.SAMPLE scripts/config/env_exam.rb

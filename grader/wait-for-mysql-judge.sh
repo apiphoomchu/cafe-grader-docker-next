@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# Source RVM and Ruby environment
-source /etc/profile.d/rvm.sh
-source /usr/local/rvm/scripts/rvm
-rvm use 3.2.1
-
 echo ""
 echo "Waiting for mysql . . ."
 until mysql -u root -p"$MYSQL_ROOT_PASSWORD" -h db > /dev/null 2>&1
@@ -12,6 +7,7 @@ do
   echo "Waiting for mysql . . ."
   sleep 1
 done
+
 echo "MySQL is Ready"
 
 # [7/2/2020] Judge Daemon
@@ -20,25 +16,13 @@ do
   echo "Waiting for setup . . ."
   sleep 1
 done
+
 echo "Environment is ready"
 
-# Set proper environment variables
-export RAILS_ENV=production
-export PATH="/usr/local/rvm/gems/ruby-3.2.1/bin:/usr/local/rvm/gems/ruby-3.2.1@global/bin:/usr/local/rvm/rubies/ruby-3.2.1/bin:$PATH"
-export GEM_HOME="/usr/local/rvm/gems/ruby-3.2.1"
-export GEM_PATH="/usr/local/rvm/gems/ruby-3.2.1:/usr/local/rvm/gems/ruby-3.2.1@global"
+/cafe_grader/judge/scripts/grader grading queue --err-log
 
-# Ensure directories exist and have proper permissions
-mkdir -p /cafe_grader/judge/log
-chmod -R 777 /cafe_grader/judge/log
-chmod -R 755 /cafe_grader/judge/scripts
+# For non-SSL purpose
+#rails s -p 3000 -b '0.0.0.0'
 
-# Change to the scripts directory where Gemfile is located
-cd /cafe_grader/judge/scripts
-
-# Ensure bundle is installed
-/bin/bash -l -c "gem install bundler"
-/bin/bash -l -c "bundle install"
-
-# Run the grader daemon with proper Ruby environment
-bundle exec ./grader grading queue --err-log
+# with-ssl-cert (Sirawit, 8/4/2019)
+# thin -p 3000 --ssl --ssl-key-file /cafe_grader/server.key --ssl-cert-file /cafe_grader/server.crt start 2>&1
