@@ -1,12 +1,11 @@
 #!/bin/bash
-
 source /etc/profile.d/rvm.sh
-rvm use 3.2.1 --default
+rvm use 2.1.5 --default
 
-# Set bundle config
-export BUNDLE_PATH=/usr/local/rvm/gems/ruby-3.2.1
-export GEM_HOME=/usr/local/rvm/gems/ruby-3.2.1
-export GEM_PATH=/usr/local/rvm/gems/ruby-3.2.1
+# Set bundle config for judge
+export BUNDLE_PATH=/usr/local/rvm/gems/ruby-2.1.5
+export GEM_HOME=/usr/local/rvm/gems/ruby-2.1.5
+export GEM_PATH=/usr/local/rvm/gems/ruby-2.1.5
 
 echo ""
 echo "Waiting for mysql . . ."
@@ -25,4 +24,4 @@ done
 echo "Environment is ready"
 
 cd /cafe_grader/judge/scripts && \
-BUNDLE_GEMFILE=/cafe_grader/web/Gemfile exec /bin/bash -l -c "source /etc/profile.d/rvm.sh && bundle exec ruby grader grading queue --err-log"
+exec /bin/bash -l -c "source /etc/profile.d/rvm.sh && rvm use 2.1.5 && ruby grader grading queue --err-log"
