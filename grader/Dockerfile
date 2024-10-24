@@ -27,6 +27,13 @@ RUN apt-get update && \
 
 WORKDIR /
 
+RUN apt-get remove -y nodejs || true
+
+# Install newer Node.js version
+RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g yarn
+
 # Import RVM keys
 RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import - && \
     curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
