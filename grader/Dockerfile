@@ -24,6 +24,8 @@ ENV TZ=Asia/Bangkok
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN curl -k -L https://get.rvm.io | bash -s stable
 RUN /bin/bash /etc/profile.d/rvm.sh
+RUN ruby -v
+RUN apt-get remove ruby
 RUN /bin/bash -l -c "rvm install $RUBY_VERSION"
 RUN /bin/bash -l -c "rvm use $RUBY_VERSION"
 RUN ruby -v
