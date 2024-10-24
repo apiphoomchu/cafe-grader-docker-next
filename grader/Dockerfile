@@ -139,4 +139,8 @@ RUN echo 'source /etc/profile.d/rvm.sh' >> /etc/bash.bashrc && \
     echo 'rvm use 3.2.1 --default' >> /etc/bash.bashrc
 
 # Set the default command with proper Ruby environment
+
+RUN cd /cafe_grader/judge/scripts && \
+    sed -i 's/File.exists?/File.exist?/g' grader
+	
 CMD ["/bin/bash", "-l", "-c", "source /etc/profile.d/rvm.sh && /cafe_grader/wait-for-mysql.sh"]
