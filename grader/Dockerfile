@@ -123,7 +123,20 @@ RUN echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml
 RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
     rake assets:precompile"
 WORKDIR /cafe_grader/web
+
+# Add the setup and wait scripts
 ADD setup.sh /cafe_grader/judge/setup.sh
 ADD wait-for-mysql-judge.sh /cafe_grader/wait-for-mysql-judge.sh
 ADD wait-for-mysql.sh /cafe_grader/wait-for-mysql.sh
-CMD /bin/bash /cafe_grader/wait-for-mysql.sh
+
+# Make sure the scripts are executable
+RUN chmod +x /cafe_grader/judge/setup.sh \
+    /cafe_grader/wait-for-mysql-judge.sh \
+    /cafe_grader/wait-for-mysql.sh
+
+# Ensure RVM is available in PATH
+RUN echo 'source /etc/profile.d/rvm.sh' >> /etc/bash.bashrc && \
+    echo 'rvm use 3.2.1 --default' >> /etc/bash.bashrc
+
+# Set the default command with proper Ruby environment
+CMD ["/bin/bash", "-l", "-c", "source /etc/profile.d/rvm.sh && /cafe_grader/wait-for-mysql.sh"]
