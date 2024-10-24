@@ -64,6 +64,7 @@ RUN gcc -std=c99 -o scripts/std-script/box scripts/std-script/box64-new.c
 # Web
 WORKDIR /cafe_grader
 ADD web /cafe_grader/web
+COPY worker.yml /cafe_grader/web/config/worker.yml
 RUN cp web/config/application.rb.SAMPLE web/config/application.rb
 RUN cp web/config/initializers/cafe_grader_config.rb.SAMPLE web/config/initializers/cafe_grader_config.rb
 RUN export timezone=`cat /etc/timezone` && export replace="s!'UTC'!'$timezone'!g" && echo $replace && sed -i $replace web/config/application.rb
