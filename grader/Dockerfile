@@ -140,7 +140,7 @@ RUN echo 'source /etc/profile.d/rvm.sh' >> /etc/bash.bashrc && \
 
 # Set the default command with proper Ruby environment
 
-RUN cd /cafe_grader/judge/scripts && \
-    sed -i 's/File.exists?/File.exist?/g' grader
-	
+RUN find /cafe_grader -type f -name "*.rb" -exec sed -i 's/File\.exists?/File.exist?/g' {} + && \
+    find /cafe_grader -type f -name "grader" -exec sed -i 's/File\.exists?/File.exist?/g' {} +
+
 CMD ["/bin/bash", "-l", "-c", "source /etc/profile.d/rvm.sh && /cafe_grader/wait-for-mysql.sh"]
