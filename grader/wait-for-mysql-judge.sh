@@ -33,8 +33,12 @@ mkdir -p /cafe_grader/judge/log
 chmod -R 777 /cafe_grader/judge/log
 chmod -R 755 /cafe_grader/judge/scripts
 
-# Change to the scripts directory
+# Change to the scripts directory where Gemfile is located
 cd /cafe_grader/judge/scripts
+
+# Ensure bundle is installed
+/bin/bash -l -c "gem install bundler"
+/bin/bash -l -c "bundle install"
 
 # Run the grader daemon with proper Ruby environment
 bundle exec ./grader grading queue --err-log
