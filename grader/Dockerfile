@@ -22,13 +22,13 @@ RUN curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
 ENV RUBY_VERSION=3.1.4
 ENV TZ=Asia/Bangkok
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-RUN curl -k -L https://get.rvm.io | bash -s stable
-RUN /bin/bash /etc/profile.d/rvm.sh
-RUN ruby -v
-RUN apt-get remove ruby -y
-RUN /bin/bash -l -c "rvm install $RUBY_VERSION"
-RUN /bin/bash -l -c "rvm use $RUBY_VERSION"
-RUN ruby -v
+RUN apt-get update && \
+    apt-get remove ruby -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    curl -sSL https://get.rvm.io | bash -s stable && \
+    /bin/bash -l -c "rvm install $RUBY_VERSION && rvm use $RUBY_VERSION --default" && \
+    ruby -v
 RUN mkdir cafe_grader
 
 # Judge
