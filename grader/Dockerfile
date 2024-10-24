@@ -6,16 +6,48 @@ ARG MYSQL_USER
 ENV MYSQL_USER $MYSQL_USER
 ARG MYSQL_PASSWORD
 ENV MYSQL_PASSWORD $MYSQL_PASSWORD
+
 RUN apt-get update && \
-	apt-get install mysql-client -y \
-	g++ gcc apache2 libmysqlclient20 \
-	git-core openssl libreadline6 libreadline6-dev \
-	zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev \
-	sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev \
-	ncurses-dev automake libtool bison subversion \
-	pkg-config unzip pyflakes ruby ruby-dev default-jdk \
-	libmysqld-dev mercurial python-setuptools python-dev python3-numpy \
-	build-essential libpq-dev nodejs curl tzdata && rm -rf /var/lib/apt/lists/*
+    apt-get install -y \
+    mysql-client \
+    g++ \
+    gcc \
+    apache2 \
+    default-libmysqlclient-dev \
+    git-core \
+    openssl \
+    libreadline-dev \
+    zlib1g \
+    zlib1g-dev \
+    libssl-dev \
+    libyaml-dev \
+    libsqlite3-dev \
+    sqlite3 \
+    libxml2-dev \
+    libxslt-dev \
+    autoconf \
+    libc6-dev \
+    ncurses-dev \
+    automake \
+    libtool \
+    bison \
+    subversion \
+    pkg-config \
+    unzip \
+    python3-pyflakes \
+    ruby \
+    ruby-dev \
+    default-jdk \
+    python3-dev \
+    python3-setuptools \
+    python3-numpy \
+    build-essential \
+    libpq-dev \
+    nodejs \
+    curl \
+    tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /
 RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import -
 RUN curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
@@ -73,8 +105,6 @@ RUN export SECRET_B=`rake secret`;echo "  secret_key_base: '$SECRET_B'" >> confi
 RUN echo "production:" >> config/secrets.yml
 RUN export SECRET_C=`rake secret`;echo "  secret_key_base: '$SECRET_C'" >> config/secrets.yml
 
-RUN echo "DEBUG $MYSQL_USER"
-
 RUN echo "development:" > config/database.yml
 RUN echo "  adapter: mysql2" >> config/database.yml
 RUN echo "  encoding: utf8" >> config/database.yml
@@ -96,6 +126,7 @@ RUN echo "  username: $MYSQL_USER" >> config/database.yml
 RUN echo "  password: $MYSQL_PASSWORD" >> config/database.yml
 RUN echo "  host: db" >> config/database.yml
 RUN echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml
+
 RUN rake assets:precompile
 
 WORKDIR /cafe_grader/web
