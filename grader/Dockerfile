@@ -32,7 +32,7 @@ RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import - && \
     curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
 
 # Install RVM and Ruby
-ENV RUBY_VERSION=3.1.4
+ENV RUBY_VERSION=3.2.1
 RUN curl -sSL https://get.rvm.io | bash -s stable && \
     /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
     rvm install ${RUBY_VERSION} && \
