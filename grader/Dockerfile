@@ -11,6 +11,7 @@ ENV MYSQL_PASSWORD $MYSQL_PASSWORD
 ENV RAILS_ENV=production
 ENV RAILS_SERVE_STATIC_FILES=true
 ENV NODE_ENV=production
+ENV DISABLE_ASSET_COMPILATION=true
 
 # Install required packages
 RUN apt-get update && \
@@ -94,11 +95,18 @@ RUN /bin/bash -l -c "bundle install"
 RUN npm install -g yarn
 RUN yarn install
 
-# Create necessary directories for asset compilation
+# Create necessary directories
 RUN mkdir -p tmp/cache
 RUN mkdir -p public/assets
 RUN chmod -R 777 tmp
 RUN chmod -R 777 public
+RUN mkdir -p app/assets/builds
+
+# Create custom CSS to override problematic styles
+RUN mkdir -p app/assets/stylesheets/custom
+RUN echo '/* Custom overrides */' > app/assets/stylesheets/custom/overrides.css
+RUN echo '.dt-row-selected { background-color: #e6e6e6 !important; }' >> app/assets/stylesheets/custom/overrides.css
+RUN echo '[class*="flex-"] { display: flex !important; }' >> app/assets/stylesheets/custom/overrides.css
 
 # Database setup
 RUN echo "development:" > config/secrets.yml
@@ -131,25 +139,16 @@ RUN echo "  password: $MYSQL_PASSWORD" >> config/database.yml
 RUN echo "  host: db" >> config/database.yml
 RUN echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml
 
-# Fix SASS compilation issues
-RUN sed -i 's/start/flex-start/g' app/assets/stylesheets/application.css.scss || true
-RUN sed -i 's/background: rgb(var(--dt-row-selected))/background: #e6e6e6/g' app/assets/stylesheets/application.css.scss || true
-
-# Alternative fix for asset compilation
-RUN echo "window.jQuery = window.$ = require('jquery')" > app/javascript/application.js || true
-
-# Set temporary SECRET_KEY_BASE for asset precompilation
-ENV SECRET_KEY_BASE=temporary_compilation_key
-
-# Precompile assets with error handling
-RUN /bin/bash -l -c "RAILS_ENV=production bundle exec rake assets:precompile || \
-    (echo 'Asset compilation failed, trying alternative method' && \
-    rm -rf tmp/cache && \
-    RAILS_ENV=production DISABLE_SPRING=1 bundle exec rake assets:precompile)"
-
 WORKDIR /cafe_grader/web
 ADD setup.sh /cafe_grader/judge/setup.sh
 ADD wait-for-mysql-judge.sh /cafe_grader/wait-for-mysql-judge.sh
 ADD wait-for-mysql.sh /cafe_grader/wait-for-mysql.sh
 
-CMD /bin/bash /cafe_grader/wait-for-mysql.sh
+# Create a new entrypoint script
+RUN echo '#!/bin/bash' > /cafe_grader/entrypoint.sh
+RUN echo 'cd /cafe_grader/web' >> /cafe_grader/entrypoint.sh
+RUN echo 'RAILS_ENV=production bundle exec rake assets:precompile || true' >> /cafe_grader/entrypoint.sh
+RUN echo 'exec /bin/bash /cafe_grader/wait-for-mysql.sh' >> /cafe_grader/entrypoint.sh
+RUN chmod +x /cafe_grader/entrypoint.sh
+
+CMD ["/cafe_grader/entrypoint.sh"]
