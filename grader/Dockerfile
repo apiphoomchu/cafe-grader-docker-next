@@ -46,6 +46,7 @@ RUN apt-get update && \
     nodejs \
     curl \
     gnupg2 \
+    sudo \
     tzdata && \
     rm -rf /var/lib/apt/lists/*
 
@@ -56,9 +57,23 @@ ENV TZ=Asia/Bangkok
 # Set timezone as root
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Create a non-root user for running Bundler
-RUN useradd -m -s /bin/bash grader
+# Create a non-root user for running Bundler and add to sudo group
+RUN useradd -m -s /bin/bash grader && \
+    usermod -aG sudo grader && \
+    echo "grader ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
 RUN mkdir -p /cafe_grader && chown -R grader:grader /cafe_grader
+
+# Install RVM dependencies as root
+RUN apt-get update && \
+    apt-get install -y \
+    gawk \
+    bison \
+    gperf \
+    autoconf \
+    bzip2 \
+    patch && \
+    rm -rf /var/lib/apt/lists/*
 
 # Switch to non-root user for RVM installation
 USER grader
@@ -72,6 +87,7 @@ RUN gpg2 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E206
 # Install RVM and Ruby
 RUN curl -sSL https://get.rvm.io | bash -s stable
 RUN /bin/bash -l -c "source $HOME/.rvm/scripts/rvm && \
+    rvm requirements && \
     rvm install $RUBY_VERSION && \
     rvm use $RUBY_VERSION --default"
 
