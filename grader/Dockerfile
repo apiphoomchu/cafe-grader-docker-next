@@ -74,8 +74,12 @@ RUN echo "Object.instance_eval{remove_const :GRADING_RESULT_DIR}" >> config/init
 RUN echo "GRADER_ROOT_DIR = '/cafe_grader/judge'" >> config/initializers/cafe_grader_config.rb
 RUN echo "GRADING_RESULT_DIR = '/cafe_grader/judge/result'" >> config/initializers/cafe_grader_config.rb
 
-RUN gem install bundler --version '>= 2.0'
-RUN bundle install
+RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
+    gem install bundler --version '>= 2.0'"
+
+# Modify the bundle install command as well
+RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
+    bundle install"
 
 # Database setup
 RUN echo "development:" > config/secrets.yml
