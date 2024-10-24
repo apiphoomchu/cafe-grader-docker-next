@@ -54,7 +54,7 @@ ADD web /cafe_grader/web
 RUN cp web/config/application.rb.SAMPLE web/config/application.rb
 COPY worker.yml /cafe_grader/web/config/worker.yml
 RUN cp web/config/initializers/cafe_grader_config.rb.SAMPLE web/config/initializers/cafe_grader_config.rb
-RUN export timezone=`cat /etc/timezone` && export replace="s!'UTC'!'$timezone'!g" && sed -i $replace web/config/application.rb
+RUN export timezone=`cat /etc/timezone` && export replace="s!'UTC'!'$timezone'!g" && echo $replace && sed -i $replace web/config/application.rb
 WORKDIR /cafe_grader/web
 
 RUN echo "Object.instance_eval{remove_const :GRADER_ROOT_DIR}" >> config/initializers/cafe_grader_config.rb 
@@ -62,41 +62,22 @@ RUN echo "Object.instance_eval{remove_const :GRADING_RESULT_DIR}" >> config/init
 RUN echo "GRADER_ROOT_DIR = '/cafe_grader/judge'" >> config/initializers/cafe_grader_config.rb
 RUN echo "GRADING_RESULT_DIR = '/cafe_grader/judge/result'" >> config/initializers/cafe_grader_config.rb
 
-# Setup Rails environment
-RUN /bin/bash -l -c "gem install rails -v '~> 7.0'"
-RUN /bin/bash -l -c "bundle config set --local path 'vendor/bundle'"
-RUN /bin/bash -l -c "bundle config set --local without 'development test'"
-RUN /bin/bash -l -c "bundle install"
-
-# Install Node.js dependencies for Rails asset compilation
-RUN npm install -g yarn
-RUN yarn install
-
-# Create necessary directories
-RUN mkdir -p tmp/cache
-RUN mkdir -p public/assets
-RUN chmod -R 777 tmp
-RUN chmod -R 777 public
-RUN mkdir -p app/assets/builds
-
-# Create custom CSS to override problematic styles
-RUN mkdir -p app/assets/stylesheets/custom
-RUN echo '/* Custom overrides */' > app/assets/stylesheets/custom/overrides.css
-RUN echo '.dt-row-selected { background-color: #e6e6e6 !important; }' >> app/assets/stylesheets/custom/overrides.css
-RUN echo '[class*="flex-"] { display: flex !important; }' >> app/assets/stylesheets/custom/overrides.css
+RUN gem install bundler --version '< 2.0'
+RUN bundle install
 
 # Database setup
 RUN echo "development:" > config/secrets.yml
-RUN export SECRET_A=`/bin/bash -l -c "rake secret"` && echo "  secret_key_base: '$SECRET_A'" >> config/secrets.yml
+RUN export SECRET_A=`rake secret`;echo "  secret_key_base: '$SECRET_A'" >> config/secrets.yml
 RUN echo "test:" >> config/secrets.yml
-RUN export SECRET_B=`/bin/bash -l -c "rake secret"` && echo "  secret_key_base: '$SECRET_B'" >> config/secrets.yml
+RUN export SECRET_B=`rake secret`;echo "  secret_key_base: '$SECRET_B'" >> config/secrets.yml
 RUN echo "production:" >> config/secrets.yml
-RUN export SECRET_C=`/bin/bash -l -c "rake secret"` && echo "  secret_key_base: '$SECRET_C'" >> config/secrets.yml
+RUN export SECRET_C=`rake secret`;echo "  secret_key_base: '$SECRET_C'" >> config/secrets.yml
 
-# Database configuration
+RUN echo "DEBUG $MYSQL_USER"
+
 RUN echo "development:" > config/database.yml
 RUN echo "  adapter: mysql2" >> config/database.yml
-RUN echo "  encoding: utf8mb4" >> config/database.yml
+RUN echo "  encoding: utf8" >> config/database.yml
 RUN echo "  reconnect: false" >> config/database.yml
 RUN echo "  database: $MYSQL_DATABASE" >> config/database.yml
 RUN echo "  pool: 5" >> config/database.yml
@@ -107,7 +88,7 @@ RUN echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml
 RUN echo "" >> config/database.yml
 RUN echo "production:" >> config/database.yml
 RUN echo "  adapter: mysql2" >> config/database.yml
-RUN echo "  encoding: utf8mb4" >> config/database.yml
+RUN echo "  encoding: utf8" >> config/database.yml
 RUN echo "  reconnect: false" >> config/database.yml
 RUN echo "  database: $MYSQL_DATABASE" >> config/database.yml
 RUN echo "  pool: 5" >> config/database.yml
@@ -115,17 +96,10 @@ RUN echo "  username: $MYSQL_USER" >> config/database.yml
 RUN echo "  password: $MYSQL_PASSWORD" >> config/database.yml
 RUN echo "  host: db" >> config/database.yml
 RUN echo "  socket: /var/run/mysqld/mysqld.sock" >> config/database.yml
+RUN rake assets:precompile
 
 WORKDIR /cafe_grader/web
 ADD setup.sh /cafe_grader/judge/setup.sh
 ADD wait-for-mysql-judge.sh /cafe_grader/wait-for-mysql-judge.sh
 ADD wait-for-mysql.sh /cafe_grader/wait-for-mysql.sh
-
-# Create a new entrypoint script
-RUN echo '#!/bin/bash' > /cafe_grader/entrypoint.sh
-RUN echo 'cd /cafe_grader/web' >> /cafe_grader/entrypoint.sh
-RUN echo 'RAILS_ENV=production bundle exec rake assets:precompile || true' >> /cafe_grader/entrypoint.sh
-RUN echo 'exec /bin/bash /cafe_grader/wait-for-mysql.sh' >> /cafe_grader/entrypoint.sh
-RUN chmod +x /cafe_grader/entrypoint.sh
-
-CMD ["/cafe_grader/entrypoint.sh"]
+CMD /bin/bash /cafe_grader/wait-for-mysql.sh
