@@ -17,7 +17,7 @@ shared:
   compiler:
     cpp: /usr/bin/g++
     c: <%= `which gcc`.strip %>
-    ruby: <%= `which ruby`.strip %>
+    # ruby: <%= `which ruby`.strip %>
     python: <%= `which python3`.strip %>
     javac: <%= `which javac`.strip %>
     java: <%= `which java`.strip %>
