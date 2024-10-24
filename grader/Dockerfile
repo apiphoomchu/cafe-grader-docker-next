@@ -40,7 +40,7 @@ RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import - && \
 
 # Install RVM and Ruby with proper permissions - using older Ruby version for judge
 ENV RUBY_VERSION_WEB=3.2.1
-ENV RUBY_VERSION_JUDGE=2.3.0
+ENV RUBY_VERSION_JUDGE=2.1.5
 RUN curl -sSL https://get.rvm.io | bash -s stable && \
     /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
     rvm install ${RUBY_VERSION_WEB} && \
