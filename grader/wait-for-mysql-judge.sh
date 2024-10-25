@@ -1,11 +1,11 @@
 #!/bin/bash
 source /etc/profile.d/rvm.sh
-rvm use 2.1.5 --default
+rvm use 2.3.0--default
 
 # Set bundle config for judge
-export BUNDLE_PATH=/usr/local/rvm/gems/ruby-2.1.5
-export GEM_HOME=/usr/local/rvm/gems/ruby-2.1.5
-export GEM_PATH=/usr/local/rvm/gems/ruby-2.1.5
+export BUNDLE_PATH=/usr/local/rvm/gems/ruby-2.3.0
+export GEM_HOME=/usr/local/rvm/gems/ruby-2.3.0
+export GEM_PATH=/usr/local/rvm/gems/ruby-2.3.0
 
 echo ""
 echo "Waiting for mysql . . ."
