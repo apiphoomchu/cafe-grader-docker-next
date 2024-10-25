@@ -27,9 +27,8 @@ RUN apt-get update && \
 
 WORKDIR /
 
+# Remove old Node.js and install newer version
 RUN apt-get update && apt-get remove -y nodejs || true
-
-# Install newer Node.js version
 RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash - && \
     apt-get install -y nodejs && \
     npm install -g yarn
@@ -38,7 +37,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash - && \
 RUN curl -sSL https://rvm.io/mpapis.asc | gpg --import - && \
     curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
 
-# Install RVM and Ruby with proper permissions - using older Ruby version for judge
+# Install RVM and Ruby versions with proper bundler configurations
 ENV RUBY_VERSION_WEB=3.2.1
 ENV RUBY_VERSION_JUDGE=2.1.5
 RUN curl -sSL https://get.rvm.io | bash -s stable && \
@@ -49,6 +48,8 @@ RUN curl -sSL https://get.rvm.io | bash -s stable && \
     rvm rubygems latest && \
     gem update --system && \
     gem install bundler:2.4.22 && \
+    rvm use ${RUBY_VERSION_JUDGE} && \
+    gem install bundler -v '1.17.3' && \
     ruby -v"
 
 # Create necessary directories with proper permissions
@@ -62,8 +63,10 @@ ADD scripts /cafe_grader/judge/scripts
 RUN mkdir -p raw ev-exam ev result log && \
     chmod -R 777 /cafe_grader/judge
 
-# Switch to older Ruby version for judge setup
-RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && rvm use ${RUBY_VERSION_JUDGE} && \
+# Configure judge environment with proper Ruby and bundler
+WORKDIR /cafe_grader/judge
+RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
+    rvm use ${RUBY_VERSION_JUDGE} && \
     cp scripts/config/env_exam.rb.SAMPLE scripts/config/env_exam.rb && \
     cp scripts/config/env_grading.rb.SAMPLE scripts/config/env_grading.rb && \
     echo \"RAILS_ROOT = '/cafe_grader/web'\" > scripts/config/environment.rb && \
@@ -71,9 +74,26 @@ RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && rvm use ${RUBY_VERSION_JUDG
     echo \"require File.join(File.dirname(__FILE__),'../lib/boot')\" >> scripts/config/environment.rb && \
     echo \"require File.dirname(__FILE__) + \\\"/env_#{GRADER_ENV}.rb\\\"\" >> scripts/config/environment.rb"
 
+# Compile the grader box
 RUN gcc -std=c99 -o scripts/std-script/box scripts/std-script/box64-new.c
 
-# Web setup (continues with newer Ruby version)
+# Set up judge Gemfiles and install dependencies
+RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
+    rvm use ${RUBY_VERSION_JUDGE} && \
+    echo 'source \"https://rubygems.org\"' > Gemfile && \
+    echo 'gem \"mysql2\", \"~> 0.3.21\"' >> Gemfile && \
+    echo 'gem \"rails\", \"~> 4.2.0\"' >> Gemfile && \
+    bundle _1.17.3_ install --path vendor/bundle"
+
+WORKDIR /cafe_grader/judge/scripts
+RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
+    rvm use ${RUBY_VERSION_JUDGE} && \
+    echo 'source \"https://rubygems.org\"' > Gemfile && \
+    echo 'gem \"mysql2\", \"~> 0.3.21\"' >> Gemfile && \
+    echo 'gem \"rails\", \"~> 4.2.0\"' >> Gemfile && \
+    bundle _1.17.3_ install --path vendor/bundle"
+
+# Web setup
 WORKDIR /cafe_grader
 ADD web /cafe_grader/web
 COPY worker.yml /cafe_grader/web/config/worker.yml
@@ -91,7 +111,7 @@ RUN echo "Object.instance_eval{remove_const :GRADER_ROOT_DIR}" >> config/initial
     echo "GRADER_ROOT_DIR = '/cafe_grader/judge'" >> config/initializers/cafe_grader_config.rb && \
     echo "GRADING_RESULT_DIR = '/cafe_grader/judge/result'" >> config/initializers/cafe_grader_config.rb
 
-# Setup bundle config
+# Setup bundle config for web
 RUN mkdir -p /usr/local/bundle && \
     chmod -R 777 /usr/local/bundle
 
@@ -99,29 +119,10 @@ RUN mkdir -p /usr/local/bundle && \
 WORKDIR /cafe_grader/web
 RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
     rvm use ${RUBY_VERSION_WEB} && \
-    gem install bundler:2.4.22 && \
     bundle config set --local path '/usr/local/bundle' && \
     bundle install --jobs 4 --retry 3"
 
-# Install gems for judge with older Ruby
-WORKDIR /cafe_grader/judge
-RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
-    rvm use ${RUBY_VERSION_JUDGE} && \
-    if [ -f Gemfile ]; then \
-        bundle config set --local path '/usr/local/bundle' && \
-        bundle install --jobs 4 --retry 3; \
-    fi"
-
-WORKDIR /cafe_grader/judge/scripts
-RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
-    rvm use ${RUBY_VERSION_JUDGE} && \
-    if [ -f Gemfile ]; then \
-        bundle config set --local path '/usr/local/bundle' && \
-        bundle install --jobs 4 --retry 3; \
-    fi"
-
-# Database setup (using web Ruby version)
-WORKDIR /cafe_grader/web
+# Database setup
 RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && \
     rvm use ${RUBY_VERSION_WEB} && \
     echo 'development:' > config/secrets.yml && \
@@ -157,7 +158,7 @@ RUN echo "development:" > config/database.yml && \
 # Precompile assets
 RUN /bin/bash -l -c "source /etc/profile.d/rvm.sh && rvm use ${RUBY_VERSION_WEB} && rake assets:precompile"
 
-# Add scripts
+# Add and configure scripts
 ADD setup.sh /cafe_grader/judge/setup.sh
 ADD wait-for-mysql-judge.sh /cafe_grader/wait-for-mysql-judge.sh
 ADD wait-for-mysql.sh /cafe_grader/wait-for-mysql.sh
@@ -167,6 +168,20 @@ RUN chmod +x /cafe_grader/judge/setup.sh \
     /cafe_grader/wait-for-mysql-judge.sh \
     /cafe_grader/wait-for-mysql.sh
 
+# Update wait-for-mysql-judge.sh script
+RUN echo '#!/bin/bash' > /cafe_grader/wait-for-mysql-judge.sh && \
+    echo 'source /etc/profile.d/rvm.sh' >> /cafe_grader/wait-for-mysql-judge.sh && \
+    echo 'rvm use 2.1.5' >> /cafe_grader/wait-for-mysql-judge.sh && \
+    echo 'export BUNDLE_PATH=/cafe_grader/judge/vendor/bundle' >> /cafe_grader/wait-for-mysql-judge.sh && \
+    echo 'cd /cafe_grader/judge/scripts' >> /cafe_grader/wait-for-mysql-judge.sh && \
+    echo 'echo "Waiting for mysql..."' >> /cafe_grader/wait-for-mysql-judge.sh && \
+    echo 'until mysql -h db -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT 1" > /dev/null 2>&1; do' >> /cafe_grader/wait-for-mysql-judge.sh && \
+    echo '  echo "Waiting for mysql..."' >> /cafe_grader/wait-for-mysql-judge.sh && \
+    echo '  sleep 1' >> /cafe_grader/wait-for-mysql-judge.sh && \
+    echo 'done' >> /cafe_grader/wait-for-mysql-judge.sh && \
+    echo 'echo "MySQL is ready"' >> /cafe_grader/wait-for-mysql-judge.sh && \
+    echo 'bundle _1.17.3_ exec ruby grader grading queue --err-log' >> /cafe_grader/wait-for-mysql-judge.sh
+
 # Fix File.exists? deprecation
 RUN find /cafe_grader -type f -name "*.rb" -exec sed -i 's/File\.exists?/File.exist?/g' {} + && \
     find /cafe_grader -type f -name "grader" -exec sed -i 's/File\.exists?/File.exist?/g' {} +
@@ -174,9 +189,9 @@ RUN find /cafe_grader -type f -name "*.rb" -exec sed -i 's/File\.exists?/File.ex
 # Set proper permissions for RVM
 RUN chmod -R 777 /usr/local/rvm
 
-# Configure RVM in bash - set web version as default but make judge version available
+# Configure RVM in bash
 RUN echo 'source /etc/profile.d/rvm.sh' >> /etc/bash.bashrc && \
-    echo 'rvm use 3.2.1 --default' >> /etc/bash.bashrc
+    echo "rvm use ${RUBY_VERSION_WEB} --default" >> /etc/bash.bashrc
 
 WORKDIR /cafe_grader/web
 
